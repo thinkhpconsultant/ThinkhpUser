@@ -39,7 +39,6 @@ namespace ThinkhpUserAPI.Controllers
                     resMsg.StatusCode = 1;
                     resMsg.Message = valMsg;
                 }
-
                 var loggedInUser = await _authService.Login(user);
                 resMsg = loggedInUser;
             }
