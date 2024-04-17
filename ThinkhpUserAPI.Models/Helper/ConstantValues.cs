@@ -29,6 +29,10 @@ namespace ThinkhpUserAPI.Models.Helper
         //RegularExpression Validation
         public const string TXT_User_Validation_Message_RegularExpression_Address = "Please enter valid address without extra space and quotation( \' and \" )";
         public const string TXT_User_Validation_Message_RegularExpression_Mobile = "Entered mobile format is not valid.";
+
+        //validations for purchase ticket
+        public const string TXT_Ticket_Purchase_duplicate_number_validation = "Mobile number already in use, Please enter new mobile number!";
+
         #endregion
     }
 }
