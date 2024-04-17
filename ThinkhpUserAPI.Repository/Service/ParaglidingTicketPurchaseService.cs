@@ -57,6 +57,7 @@ namespace ThinkhpUserAPI.Repository.Service
                     {
                         long userId = Convert.ToInt64(responseOfInsertCustomer.Data);
                         var insertInPurchaseTicketTable = await InsertDataIntoParaglidingTicketPurchaseTable(requestModel, userId);
+                        await InsertDataIntoParaglidingTicketPurchaseDetailTable(Convert.ToInt64(insertInPurchaseTicketTable.Data), userId, requestModel.AmountPerTicket ?? 0);
                         var successOfListEntry = InsertListOfCustomers(requestModel, Convert.ToInt64(insertInPurchaseTicketTable.Data), requestModel.AmountPerTicket ?? 0);
 
                         if (successOfListEntry.Status == 0)
@@ -192,6 +193,18 @@ namespace ThinkhpUserAPI.Repository.Service
                 NetAmount = AmountPerTicket
             };
             await _context.ParaglidingTicketPurchaseDetails.AddAsync(paraglidingTicketPurchaseDetail);
+            await _context.SaveChangesAsync();
+            await InsertDataIntoParaglidingTicketStatusTable(paraglidingTicketPurchaseDetail.PurchasedTicketDetailId);
+            return new CommonApiResponseModel { StatusCode = 0, Message = ConstantValues.TXT_Ticket_Purchase_Success_Message };
+        }
+        private async Task<CommonApiResponseModel> InsertDataIntoParaglidingTicketStatusTable(long PurchasedTicketDetailId)
+        {
+            ParaglidingTicketStatus paraglidingTicketStatuses = new ParaglidingTicketStatus()
+            {
+                PurchasedTicketDetailId = PurchasedTicketDetailId,
+                IsTicketPurchased = true,
+            };
+            await _context.ParaglidingTicketStatuses.AddAsync(paraglidingTicketStatuses);
             await _context.SaveChangesAsync();
 
             return new CommonApiResponseModel { StatusCode = 0, Message = ConstantValues.TXT_Ticket_Purchase_Success_Message };
