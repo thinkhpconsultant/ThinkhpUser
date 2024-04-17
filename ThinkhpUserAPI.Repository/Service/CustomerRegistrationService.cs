@@ -41,6 +41,7 @@ namespace ThinkhpUserAPI.Repository.Service
                 InsertedOn = DateTime.UtcNow,
             };
 
+
             if (!string.IsNullOrEmpty(model.Password))
             {
                 newCustomer.UserName = model.MobileNumber;
