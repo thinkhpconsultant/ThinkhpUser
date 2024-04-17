@@ -29,8 +29,6 @@ namespace ThinkhpUserAPI.Repository.Service
             {
                 FirstName = model.FirstName,
                 LastName = model.LastName,
-                //UserName = model.UserName,
-                //Password = encodedPassword,
                 Address = model.Address,
                 MobileNumber = model.MobileNumber,
                 AlternateMobileNumber = model.AlternateMobileNumber,
