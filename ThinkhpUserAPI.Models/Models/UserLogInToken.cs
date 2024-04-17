@@ -5,7 +5,7 @@ namespace ThinkhpUserAPI.Models.Models;
 
 public partial class UserLogInToken
 {
-    public long? UserTokenId { get; set; }
+    public long UserTokenId { get; set; }
 
     public long? UserId { get; set; }
 

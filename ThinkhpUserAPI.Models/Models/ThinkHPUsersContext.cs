@@ -28,7 +28,8 @@ public partial class ThinkHPUsersContext : DbContext
     public virtual DbSet<UserRole> UserRoles { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        => optionsBuilder.UseSqlServer();
+#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
+        => optionsBuilder.UseSqlServer("Data Source=192.168.1.12\\\\\\\\SQLEXPRESS01,1433;Initial Catalog=ThinkHPUsers;User Id=dp;Password=Thinkhp502@;Connect Timeout=30;Encrypt=False;TrustServerCertificate=False;ApplicationIntent=ReadWrite;MultiSubnetFailover=False");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -105,9 +106,9 @@ public partial class ThinkHPUsersContext : DbContext
 
         modelBuilder.Entity<UserLogInToken>(entity =>
         {
-            entity
-                .HasNoKey()
-                .ToTable("UserLogInToken");
+            entity.HasKey(e => e.UserTokenId);
+
+            entity.ToTable("UserLogInToken");
 
             entity.Property(e => e.InsertedOn).HasColumnType("datetime");
             entity.Property(e => e.TokenExpireTime).HasColumnType("datetime");

@@ -30,7 +30,8 @@ namespace ThinkhpUserAPI.Repository.Service
                 return new CommonApiResponseModel { StatusCode = 1, Message = ConstantValues.ER_Msg_User_Credential_Wrong };
 
             var tokenHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.ASCII.GetBytes(_configuration["JWT:SecretKey"]);
+            var securityKey = new SymmetricSecurityKey(Encoding.UTF32.GetBytes(_configuration["JWT:SecretKey"]));
+            
             var sessionTimeOut = _configuration.GetSection("SessionTimeOut");
             double sessionTimeOutMinutes = Convert.ToDouble(string.IsNullOrEmpty(sessionTimeOut.Value) ? 60 : sessionTimeOut.Value);
             var tokenDescriptor = new SecurityTokenDescriptor
@@ -45,33 +46,44 @@ namespace ThinkhpUserAPI.Repository.Service
                 Issuer = _configuration["JWT:Issuer"],
                 Audience = _configuration["JWT:Audience"],
                 Expires = DateTime.UtcNow.AddMinutes(sessionTimeOutMinutes),
-                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature),
-            };
+                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(securityKey.Key), SecurityAlgorithms.HmacSha256Signature),
+        };
 
-            var tokenDesc = tokenHandler.CreateToken(tokenDescriptor);
-            var token = tokenHandler.WriteToken(tokenDesc);
 
-            UserLogInToken objLoginToken = new()
+            try
             {
-                UserId = userDet.UserId,
-                Token = token,
-                TokenExpireTime = tokenDescriptor.Expires,
-                InsertedOn = DateTime.UtcNow,
-                InsertedBy = 1,
-                IsUsed = false
-            };
-            //await _context.AddAsync(objLoginToken);
-            //await _context.SaveChangesAsync();
+                var tokenDesc = tokenHandler.CreateToken(tokenDescriptor);
+                var token = tokenHandler.WriteToken(tokenDesc);
 
-            AuthenticateResponseModel resObj = new()
+                UserLogInToken objLoginToken = new()
+                {
+                    UserId = userDet.UserId,
+                    Token = token,
+                    TokenExpireTime = tokenDescriptor.Expires,
+                    InsertedOn = DateTime.UtcNow,
+                    InsertedBy = 1,
+                    IsUsed = false
+                };
+
+                await _context.AddAsync(objLoginToken);
+                await _context.SaveChangesAsync();
+
+                AuthenticateResponseModel resObj = new()
+                {
+                    UserId = userDet.UserId,
+                    Name = $"{userDet.FirstName} {userDet.LastName}",
+                    Username = userDet.UserName,
+                    Token = token,
+                    TokenExpireTime = Convert.ToString(objLoginToken.TokenExpireTime),
+                };
+                return new CommonApiResponseModel { StatusCode = 0, Data = resObj };
+            }
+            catch (Exception ex)
             {
-                UserId = userDet.UserId,
-                Name = $"{userDet.FirstName} {userDet.LastName}",
-                Username = userDet.UserName,
-                Token = token,
-                TokenExpireTime = Convert.ToString(objLoginToken.TokenExpireTime),
-            };
-            return new CommonApiResponseModel { StatusCode = 0, Data = resObj };
+                // Log the exception
+                Console.WriteLine($"Exception during token creation: {ex.Message}");
+                throw; // Rethrow the exception to see details in the debugger
+            }
         }
         public async Task<CommonApiResponseModel> Logout(LogoutRequestModel model)
         {
@@ -83,7 +95,7 @@ namespace ThinkhpUserAPI.Repository.Service
                 userDet.IsDeleted = true;
                 await _context.SaveChangesAsync();
             }
-            return new CommonApiResponseModel { StatusCode = 0 };
+            return new CommonApiResponseModel { StatusCode = 0, Message = "Logout Successful" };
         }
     }
 }
