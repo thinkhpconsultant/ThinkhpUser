@@ -10,6 +10,7 @@ namespace ThinkhpUserAPI.Repository.Interface
 {
     public interface IParaglidingTicketPurchaseService
     {
-        Task<CommonApiResponseModel> ParaglidingTicketPurchase(ParaglidingTicketPurchaseRequestModel model);
+        Task<CommonApiResponseModel> ParaglidingTicketPurchaseInsert(ParaglidingTicketPurchaseRequestModel model);
+
     }
 }
