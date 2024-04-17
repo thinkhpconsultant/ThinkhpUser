@@ -20,6 +20,7 @@ builder.Services.AddDbContext<ThinkHPUsersContext>(x => x.UseSqlServer(connectio
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ICustomerRegistrationService, CustomerRegistrationService>();
 builder.Services.AddScoped<IUserRegistrationService, UserRegistrationService>();
+builder.Services.AddScoped<IParaglidingTicketPurchaseService, ParaglidingTicketPurchaseService>();
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
