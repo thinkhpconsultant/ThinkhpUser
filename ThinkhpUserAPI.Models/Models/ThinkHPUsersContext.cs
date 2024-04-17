@@ -17,6 +17,12 @@ public partial class ThinkHPUsersContext : DbContext
 
     public virtual DbSet<CityMaster> CityMasters { get; set; }
 
+    public virtual DbSet<ParaglidingTicketPurchase> ParaglidingTicketPurchases { get; set; }
+
+    public virtual DbSet<ParaglidingTicketPurchaseDetail> ParaglidingTicketPurchaseDetails { get; set; }
+
+    public virtual DbSet<ParaglidingTicketStatus> ParaglidingTicketStatuses { get; set; }
+
     public virtual DbSet<Role> Roles { get; set; }
 
     public virtual DbSet<StateMaster> StateMasters { get; set; }
@@ -29,7 +35,7 @@ public partial class ThinkHPUsersContext : DbContext
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-        => optionsBuilder.UseSqlServer("Data Source=192.168.1.12\\\\\\\\SQLEXPRESS01,1433;Initial Catalog=ThinkHPUsers;User Id=dp;Password=Thinkhp502@;Connect Timeout=30;Encrypt=False;TrustServerCertificate=False;ApplicationIntent=ReadWrite;MultiSubnetFailover=False");
+        => optionsBuilder.UseSqlServer();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -40,6 +46,66 @@ public partial class ThinkHPUsersContext : DbContext
             entity.ToTable("CityMaster");
 
             entity.Property(e => e.Name).HasMaxLength(50);
+        });
+
+        modelBuilder.Entity<ParaglidingTicketPurchase>(entity =>
+        {
+            entity.HasKey(e => e.PurchasedTicketId);
+
+            entity.ToTable("ParaglidingTicketPurchase");
+
+            entity.Property(e => e.AmountPerTicket).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.Cgstamount)
+                .HasColumnType("decimal(18, 2)")
+                .HasColumnName("CGSTAmount");
+            entity.Property(e => e.Cgstpercentage)
+                .HasColumnType("decimal(18, 2)")
+                .HasColumnName("CGSTPercentage");
+            entity.Property(e => e.DiscountAmount).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.DiscountPercentage).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.NetAmount).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.Sgstamount)
+                .HasColumnType("decimal(18, 2)")
+                .HasColumnName("SGSTAmount");
+            entity.Property(e => e.Sgstpercentage)
+                .HasColumnType("decimal(18, 2)")
+                .HasColumnName("SGSTPercentage");
+
+            entity.HasOne(d => d.User).WithMany(p => p.ParaglidingTicketPurchases)
+                .HasForeignKey(d => d.UserId)
+                .HasConstraintName("FK_ParaglidingTicketPurchase_User");
+        });
+
+        modelBuilder.Entity<ParaglidingTicketPurchaseDetail>(entity =>
+        {
+            entity.HasKey(e => e.PurchasedTicketDetailId);
+
+            entity.ToTable("ParaglidingTicketPurchaseDetail");
+
+            entity.Property(e => e.NetAmount).HasColumnType("decimal(18, 2)");
+
+            entity.HasOne(d => d.PurchasedTicket).WithMany(p => p.ParaglidingTicketPurchaseDetails)
+                .HasForeignKey(d => d.PurchasedTicketId)
+                .HasConstraintName("FK_ParaglidingTicketPurchaseDetail_ParaglidingTicketPurchase");
+
+            entity.HasOne(d => d.User).WithMany(p => p.ParaglidingTicketPurchaseDetails)
+                .HasForeignKey(d => d.UserId)
+                .HasConstraintName("FK_ParaglidingTicketPurchaseDetail_User");
+        });
+
+        modelBuilder.Entity<ParaglidingTicketStatus>(entity =>
+        {
+            entity.HasKey(e => e.TicketStatusId);
+
+            entity.ToTable("ParaglidingTicketStatus");
+
+            entity.Property(e => e.TicketStatusId).ValueGeneratedNever();
+            entity.Property(e => e.PurchasedTicketDetailId).ValueGeneratedOnAdd();
+
+            entity.HasOne(d => d.PurchasedTicketDetail).WithMany(p => p.ParaglidingTicketStatuses)
+                .HasForeignKey(d => d.PurchasedTicketDetailId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_ParaglidingTicketStatus_ParaglidingTicketPurchaseDetail");
         });
 
         modelBuilder.Entity<Role>(entity =>

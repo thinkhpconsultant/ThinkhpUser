@@ -41,6 +41,10 @@ public partial class User
 
     public virtual CityMaster? City { get; set; }
 
+    public virtual ICollection<ParaglidingTicketPurchaseDetail> ParaglidingTicketPurchaseDetails { get; set; } = new List<ParaglidingTicketPurchaseDetail>();
+
+    public virtual ICollection<ParaglidingTicketPurchase> ParaglidingTicketPurchases { get; set; } = new List<ParaglidingTicketPurchase>();
+
     public virtual StateMaster? State { get; set; }
 
     public virtual ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
