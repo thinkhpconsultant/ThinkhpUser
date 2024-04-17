@@ -99,9 +99,6 @@ public partial class ThinkHPUsersContext : DbContext
 
             entity.ToTable("ParaglidingTicketStatus");
 
-            entity.Property(e => e.TicketStatusId).ValueGeneratedNever();
-            entity.Property(e => e.PurchasedTicketDetailId).ValueGeneratedOnAdd();
-
             entity.HasOne(d => d.PurchasedTicketDetail).WithMany(p => p.ParaglidingTicketStatuses)
                 .HasForeignKey(d => d.PurchasedTicketDetailId)
                 .OnDelete(DeleteBehavior.ClientSetNull)

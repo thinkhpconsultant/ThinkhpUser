@@ -32,8 +32,8 @@ namespace ThinkhpUserAPI.Models.Helper
 
         //validations for purchase ticket
         public const string TXT_Ticket_Purchase_duplicate_number_validation = "Mobile number already in use, Please enter new mobile number!";
-        public const string TXT_Ticket_Purchase_Success_Message = "Ticker purchased successfully.";
-        public const string TXT_Ticket_Purchase_Error_Message = "Ticker purchased failed.";
+        public const string TXT_Ticket_Purchase_Success_Message = "Ticket purchased successfully.";
+        public const string TXT_Ticket_Purchase_Error_Message = "Ticket purchase failed.";
 
 
         #endregion
