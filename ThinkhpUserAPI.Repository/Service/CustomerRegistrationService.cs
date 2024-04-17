@@ -23,11 +23,14 @@ namespace ThinkhpUserAPI.Repository.Service
         }
         public async Task<CommonApiResponseModel> CustomerRegistration(CustomerRegistrationRequestModel model)
         {
-            User newUser = new()
+            string encodedPassword = EncryptDecryptHelper.EncodePassword(model.Password);
+
+            User newCustomer = new()
             {
                 FirstName = model.FirstName,
                 LastName = model.LastName,
-                UserName = model.UserName,
+                //UserName = model.UserName,
+                //Password = encodedPassword,
                 Address = model.Address,
                 MobileNumber = model.MobileNumber,
                 AlternateMobileNumber = model.AlternateMobileNumber,
@@ -39,7 +42,13 @@ namespace ThinkhpUserAPI.Repository.Service
                 InsertedBy = 1,
                 InsertedOn = DateTime.UtcNow,
             };
-            await _context.Users.AddAsync(newUser);
+
+            if (!string.IsNullOrEmpty(model.Password))
+            {
+                newCustomer.UserName = model.MobileNumber;
+                newCustomer.Password = encodedPassword;
+            }
+            await _context.Users.AddAsync(newCustomer);
             await _context.SaveChangesAsync();
 
             return new CommonApiResponseModel { StatusCode = 0, Data = 0 };
