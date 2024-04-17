@@ -23,19 +23,60 @@ namespace ThinkhpUserAPI.Repository.Service
             _configuration = configuration;
         }
 
+
+        public async Task<CommonApiResponseModel> CustomerRegistrationFromTicketPurchase(CustomerRegistrationRequestModel customerRegistrationModel)
+        {
+            User newCustomer = new()
+            {
+                FirstName = customerRegistrationModel.FirstName,
+                LastName = customerRegistrationModel.LastName,
+                Address = customerRegistrationModel.Address,
+                MobileNumber = customerRegistrationModel.MobileNumber,
+                AlternateMobileNumber = customerRegistrationModel.AlternateMobileNumber,
+                Email = customerRegistrationModel.Email,
+                CityId = customerRegistrationModel.CityId,
+                StateId = customerRegistrationModel.StateId,
+                PinCode = customerRegistrationModel.PinCode,
+                IsDeleted = false,
+                InsertedBy = 1,
+                InsertedOn = DateTime.UtcNow,
+            };
+            await _context.Users.AddAsync(newCustomer);
+            await _context.SaveChangesAsync();
+            return new CommonApiResponseModel { StatusCode = 0, Message = ConstantValues.SC_Msg_Ins, Data = newCustomer.UserId };
+        }
+
         public async Task<CommonApiResponseModel> ParaglidingTicketPurchase(ParaglidingTicketPurchaseRequestModel requestModel)
         {
 
             bool isCustomerNew = CheckIfCustomerIsNew(requestModel).Result;
-            bool isMobileNumberDuplicate = CheckIfMobileNumberIsNew(requestModel).Result;
+            bool isMobileNumberNew = CheckIfMobileNumberIsNew(requestModel).Result;
             if (isCustomerNew)
             {
-                if (isMobileNumberDuplicate)
+                if (!isMobileNumberNew)
                     return new CommonApiResponseModel { StatusCode = 1, Message = ConstantValues.TXT_Ticket_Purchase_duplicate_number_validation };
+                else
+                {
+                    CustomerRegistrationRequestModel newCustomer = new()
+                    {
+                        FirstName = requestModel.FirstName,
+                        LastName = requestModel.LastName,
+                        Address = requestModel.Address,
+                        MobileNumber = requestModel.MobileNumber,
+                        AlternateMobileNumber = requestModel.AlternateMobileNumber,
+                        Email = requestModel.Email,
+                        CityId = requestModel.CityId,
+                        StateId = requestModel.StateId,
+                        PinCode = requestModel.PinCode,
+                        IsDeleted = false,
+                        InsertedBy = 1,
+                        InsertedOn = DateTime.UtcNow,
+                    };
+                    await CustomerRegistrationFromTicketPurchase(newCustomer);
+                }
             }
             else
             {
-
             }
             return new CommonApiResponseModel();
         }
@@ -52,9 +93,9 @@ namespace ThinkhpUserAPI.Repository.Service
         {
             var customers = _context.Users.Where(x => x.MobileNumber == requestModel.MobileNumber).FirstOrDefault();
             if (customers == null)
-                return false;
-            else
                 return true;
+            else
+                return false;
         }
     }
 }
