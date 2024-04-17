@@ -14,32 +14,31 @@ namespace ThinkhpUserAPI.Repository.Service
         {
             _context = context;
         }
-        public async Task<CommonApiResponseModel> UserRegistration(UserRegistrationRequestModel model)
+        public async Task<CommonApiResponseModel> UserRegistration(UserRegistrationRequestModel userRegistrationRequestModel)
         {
             try
             {
-                var tempData = _context.Users.ToList();
-                string encodedPassword = EncryptDecryptHelper.EncodePassword(model.Password);
+                var userMobileNo = await _context.Users.AnyAsync(x => x.MobileNumber == userRegistrationRequestModel.MobileNumber);
+                if (userMobileNo)
+                    return new CommonApiResponseModel { StatusCode = 2, Message = ConstantValues.WR_Msg_User_Mobile_Exists.Replace("{field}", "User with this mobile no.") };
+
+                var userData = _context.Users.ToList();
+                string encodedPassword = EncryptDecryptHelper.EncodePassword(userRegistrationRequestModel.Password);
                 User newUser = new()
                 {
-                    FirstName = model.FirstName,
-                    LastName = model.LastName,
-                    UserName = model.UserName,
+                    FirstName = userRegistrationRequestModel.FirstName,
+                    LastName = userRegistrationRequestModel.LastName,
+                    UserName = userRegistrationRequestModel.MobileNumber,
                     Password = encodedPassword,
-                    Address = model.Address,
-                    MobileNumber = model.MobileNumber,
-                    AlternateMobileNumber = model.AlternateMobileNumber,
-                    Email = model.Email,
-                    CityId = model.CityId,
-                    StateId = model.StateId,
-                    PinCode = model.PinCode,
+                    Address = userRegistrationRequestModel.Address,
+                    MobileNumber = userRegistrationRequestModel.MobileNumber,
+                    AlternateMobileNumber = userRegistrationRequestModel.AlternateMobileNumber,
                     IsDeleted = false,
-                    InsertedBy = 1,
                     InsertedOn = DateTime.UtcNow,
                 };
                 await _context.Users.AddAsync(newUser);
                 await _context.SaveChangesAsync();
-                return new CommonApiResponseModel { StatusCode = 0, Data = "" };
+                return new CommonApiResponseModel { StatusCode = 0, Message = ConstantValues.SC_Msg_Ins, Data = newUser.UserId };
             }
             catch (Exception)
             {
