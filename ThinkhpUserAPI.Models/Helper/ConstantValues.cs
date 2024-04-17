@@ -25,7 +25,6 @@ namespace ThinkhpUserAPI.Models.Helper
         public const string TXT_User_Validation_Message_Required_User_Name = "The First Name is required.";
         public const string TXT_User_Validation_Message_Required_User_Last_Name = "The Last Name is required.";
         public const string TXT_User_Validation_Message_Required_User_Password = "Your password must be at least 5 characters long and contain at least 1 letter and 1 number";
-        //The password must be 6 characters long and contain at least one symbol(!, @, #, etc).
 
         //RegularExpression Validation
         public const string TXT_User_Validation_Message_RegularExpression_Address = "Please enter valid address without extra space and quotation( \' and \" )";
