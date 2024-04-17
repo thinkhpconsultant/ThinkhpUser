@@ -33,7 +33,7 @@ namespace ThinkhpUserAPI.Controllers
             var resMsg = new CommonApiResponseModel { };
             try
             {
-                var responseModel = await _paraglidingTicketPurchaseService.ParaglidingTicketPurchase(requestModel);
+                var responseModel = await _paraglidingTicketPurchaseService.ParaglidingTicketPurchaseInsert(requestModel);
                 resMsg = responseModel;
             }
             catch (Exception ex)
