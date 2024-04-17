@@ -23,6 +23,9 @@ namespace ThinkhpUserAPI.Repository.Service
         }
         public async Task<CommonApiResponseModel> CustomerRegistration(CustomerRegistrationRequestModel model)
         {
+            var customerMobileNo = await _context.Users.AnyAsync(x => x.MobileNumber == model.MobileNumber);
+            if (customerMobileNo)
+                return new CommonApiResponseModel { StatusCode = 2, Message = ConstantValues.WR_Msg_User_Mobile_Exists.Replace("{field}", "User with this mobile no.") };
             string encodedPassword = EncryptDecryptHelper.EncodePassword(model.Password);
 
             User newCustomer = new()
@@ -41,7 +44,6 @@ namespace ThinkhpUserAPI.Repository.Service
                 InsertedOn = DateTime.UtcNow,
             };
 
-
             if (!string.IsNullOrEmpty(model.Password))
             {
                 newCustomer.UserName = model.MobileNumber;
@@ -50,7 +52,7 @@ namespace ThinkhpUserAPI.Repository.Service
             await _context.Users.AddAsync(newCustomer);
             await _context.SaveChangesAsync();
 
-            return new CommonApiResponseModel { StatusCode = 0, Data = 0 };
+            return new CommonApiResponseModel { StatusCode = 0, Message = ConstantValues.SC_Msg_Ins, Data = newCustomer.UserId };
         }
     }
 }
