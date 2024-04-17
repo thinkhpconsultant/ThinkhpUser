@@ -25,9 +25,8 @@ namespace ThinkhpUserAPI.Repository.Service
 
         public async Task<CommonApiResponseModel> ParaglidingTicketPurchase(ParaglidingTicketPurchaseRequestModel requestModel)
         {
-
-            bool isCustomerNew = CheckIfCustomerIsNew(requestModel).Result;
-            bool isMobileNumberDuplicate = CheckIfMobileNumberIsNew(requestModel).Result;
+            bool isCustomerNew = CheckIfCustomerIsNew(requestModel.MobileNumber, requestModel.FirstName, requestModel.LastName).Result;
+            bool isMobileNumberDuplicate = CheckIfMobileNumberIsNew(requestModel.MobileNumber).Result;
             if (isCustomerNew)
             {
                 if (isMobileNumberDuplicate)
@@ -35,26 +34,45 @@ namespace ThinkhpUserAPI.Repository.Service
             }
             else
             {
-
+                
             }
             return new CommonApiResponseModel();
         }
 
-        private async Task<bool> CheckIfCustomerIsNew(ParaglidingTicketPurchaseRequestModel requestModel)
+        private async Task<bool> CheckIfCustomerIsNew(string MobileNumber, string FirstName, string LastName)
         {
-            var temp = _context.Users.Where(x => x.FirstName.Equals(requestModel.FirstName) && x.LastName.Equals(requestModel.LastName) && x.MobileNumber.Equals(requestModel.MobileNumber)).FirstOrDefault();
+            var temp = _context.Users.Where(x => x.FirstName.Equals(FirstName) && x.LastName.Equals(LastName) && x.MobileNumber.Equals(MobileNumber)).FirstOrDefault();
             if (temp == null)
                 return true;
             else
                 return false;
         }
-        private async Task<bool> CheckIfMobileNumberIsNew(ParaglidingTicketPurchaseRequestModel requestModel)
+        private async Task<bool> CheckIfMobileNumberIsNew(string mobileNumber)
         {
-            var customers = _context.Users.Where(x => x.MobileNumber == requestModel.MobileNumber).FirstOrDefault();
+            var customers = _context.Users.Where(x => x.MobileNumber == mobileNumber).FirstOrDefault();
             if (customers == null)
                 return false;
             else
                 return true;
+        }
+
+        private async Task<CommonApiResponseModel> InsertListOfCustomers(List<CustomerRegistrationRequestModel> customerList)
+        {
+            foreach (var eachCustomer in customerList)
+            {
+                bool isCustomerNew = CheckIfCustomerIsNew(eachCustomer.MobileNumber, eachCustomer.FirstName, eachCustomer.LastName).Result;
+                bool isMobileNumberDuplicate = CheckIfMobileNumberIsNew(eachCustomer.MobileNumber).Result;
+                if (isCustomerNew)
+                {
+                    if (isMobileNumberDuplicate)
+                        return new CommonApiResponseModel { StatusCode = 1, Message = ConstantValues.TXT_Ticket_Purchase_duplicate_number_validation };
+                }
+                else
+                {
+                    
+                }
+            }
+            return new CommonApiResponseModel { StatusCode = 0, Message = ConstantValues.TXT_Ticket_Purchase_Success_Message };
         }
     }
 }
