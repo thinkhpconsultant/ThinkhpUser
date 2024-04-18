@@ -1,16 +1,9 @@
-﻿using Azure;
-using Microsoft.Extensions.Configuration;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Microsoft.Extensions.Configuration;
 using ThinkhpUserAPI.Models.Helper;
 using ThinkhpUserAPI.Models.Models;
 using ThinkhpUserAPI.Models.RequestModels;
 using ThinkhpUserAPI.Models.ResponseModels;
 using ThinkhpUserAPI.Repository.Interface;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace ThinkhpUserAPI.Repository.Service
 {
@@ -29,56 +22,40 @@ namespace ThinkhpUserAPI.Repository.Service
         //Main method to insert data from request model to database
         public async Task<CommonApiResponseModel> ParaglidingTicketPurchaseInsert(ParaglidingTicketPurchaseRequestModel requestModel)
         {
-            bool isCustomerNew = CheckIfCustomerIsNew(requestModel.MobileNumber, requestModel.FirstName, requestModel.LastName).Result;
-            bool isMobileNumberNew = CheckIfMobileNumberIsNew(requestModel.MobileNumber).Result;
-            if (isCustomerNew)
+            try
             {
-                if (!isMobileNumberNew)
-                    return new CommonApiResponseModel { StatusCode = 1, Message = ConstantValues.TXT_Ticket_Purchase_duplicate_number_validation };
-                else
-                {
-                    CustomerRegistrationRequestModel newCustomer = new()
-                    {
-                        FirstName = requestModel.FirstName,
-                        LastName = requestModel.LastName,
-                        Address = requestModel.Address,
-                        MobileNumber = requestModel.MobileNumber,
-                        AlternateMobileNumber = requestModel.AlternateMobileNumber,
-                        Email = requestModel.Email,
-                        CityId = requestModel.CityId,
-                        StateId = requestModel.StateId,
-                        PinCode = requestModel.PinCode,
-                        IsDeleted = false,
-                        InsertedBy = 1,
-                        InsertedOn = DateTime.UtcNow,
-                    };
-                    var responseOfInsertCustomer = await CustomerRegistrationFromTicketPurchase(newCustomer);
-                    if (responseOfInsertCustomer.StatusCode == 0)
-                    {
-                        long userId = Convert.ToInt64(responseOfInsertCustomer.Data);
-                        var insertInPurchaseTicketTable = await InsertDataIntoParaglidingTicketPurchaseTable(requestModel, userId);
-                        await InsertDataIntoParaglidingTicketPurchaseDetailTable(Convert.ToInt64(insertInPurchaseTicketTable.Data), userId, requestModel.AmountPerTicket ?? 0);
-                        var successOfListEntry = InsertListOfCustomers(requestModel, Convert.ToInt64(insertInPurchaseTicketTable.Data), requestModel.AmountPerTicket ?? 0);
 
-                        if (successOfListEntry.Status == 0)
-                        {
-                            return new CommonApiResponseModel { StatusCode = 0, Message = ConstantValues.TXT_Ticket_Purchase_Success_Message };
-                        }
-                        else
-                            return new CommonApiResponseModel { StatusCode = 1, Message = ConstantValues.TXT_Ticket_Purchase_Error_Message };
-                    }
+
+                long userId = 0;
+                var customerSearchOfRegistration = await InsertOrFindTheUserAndReturnIdOfUser(requestModel);
+                if (customerSearchOfRegistration != null)
+                {
+                    if (customerSearchOfRegistration.StatusCode != 0)
+                        return new CommonApiResponseModel { StatusCode = 1, Message = customerSearchOfRegistration.Message };
+
                     else
-                        return new CommonApiResponseModel { StatusCode = 1, Message = ConstantValues.TXT_Ticket_Purchase_Error_Message };
+                        userId = Convert.ToInt64(customerSearchOfRegistration.Data);
                 }
+                var insertInPurchaseTicketTable = await InsertDataIntoParaglidingTicketPurchaseTable(requestModel, userId);
+                await InsertDataIntoParaglidingTicketPurchaseDetailTable(Convert.ToInt64(insertInPurchaseTicketTable.Data), userId, requestModel.AmountPerTicket ?? 0);
+                var successOfListEntry = await InsertListOfCustomers(requestModel, Convert.ToInt64(insertInPurchaseTicketTable.Data));
+
+                if (successOfListEntry.StatusCode == 0)
+                {
+                    return new CommonApiResponseModel { StatusCode = 0, Message = ConstantValues.TXT_Ticket_Purchase_Success_Message };
+                }
+                else
+                    return new CommonApiResponseModel { StatusCode = 1, Message = ConstantValues.TXT_Ticket_Purchase_Error_Message };
             }
-            else
+            catch (Exception)
             {
-                return new CommonApiResponseModel { StatusCode = 1, Message = ConstantValues.TXT_Ticket_Purchase_Error_Message };
+
+                throw;
             }
         }
 
         #region Method For Validation
-        private async Task<bool> CheckIfCustomerIsNew(string MobileNumber, string FirstName, string LastName)
+        private bool CheckIfCustomerIsNew(string MobileNumber, string FirstName, string LastName)
         {
             var temp = _context.Users.Where(x => x.FirstName.Equals(FirstName) && x.LastName.Equals(LastName) && x.MobileNumber.Equals(MobileNumber)).FirstOrDefault();
             if (temp == null)
@@ -86,7 +63,7 @@ namespace ThinkhpUserAPI.Repository.Service
             else
                 return false;
         }
-        private async Task<bool> CheckIfMobileNumberIsNew(string mobileNumber)
+        private bool CheckIfMobileNumberIsNew(string mobileNumber)
         {
             var customers = _context.Users.Where(x => x.MobileNumber == mobileNumber).FirstOrDefault();
             if (customers == null)
@@ -97,64 +74,151 @@ namespace ThinkhpUserAPI.Repository.Service
         #endregion
 
         #region Common Methods
-        public async Task<CommonApiResponseModel> CustomerRegistrationFromTicketPurchase(CustomerRegistrationRequestModel customerRegistrationModel)
+        // To insert or find the user from data & return the UserId
+        private async Task<CommonApiResponseModel> InsertOrFindTheUserAndReturnIdOfUser(ParaglidingTicketPurchaseRequestModel requestModel)
         {
-            User newCustomer = new()
+            try
             {
-                FirstName = customerRegistrationModel.FirstName,
-                LastName = customerRegistrationModel.LastName,
-                Address = customerRegistrationModel.Address,
-                MobileNumber = customerRegistrationModel.MobileNumber,
-                AlternateMobileNumber = customerRegistrationModel.AlternateMobileNumber,
-                Email = customerRegistrationModel.Email,
-                CityId = customerRegistrationModel.CityId,
-                StateId = customerRegistrationModel.StateId,
-                PinCode = customerRegistrationModel.PinCode,
+
+                long userId = 0;
+                bool isCustomerNew = CheckIfCustomerIsNew(requestModel.MobileNumber, requestModel.FirstName, requestModel.LastName);
+                bool isMobileNumberNew = CheckIfMobileNumberIsNew(requestModel.MobileNumber);
+                CustomerRegistrationRequestModel newCreatedCustomer = new CustomerRegistrationRequestModel();
+
+                #region Check if customer is New
+                if (isCustomerNew)
+                {
+                    if (!isMobileNumberNew)
+                        return new CommonApiResponseModel { StatusCode = 1, Message = ConstantValues.TXT_Ticket_Purchase_duplicate_number_validation };
+                    else
+                        newCreatedCustomer = await CreateNewCustomerFromParaglidingRequestModel(requestModel);
+                }
+                #endregion
+
+                if (newCreatedCustomer != null) // if this object is null that means user is not new
+                {
+                    var responseOfInsertCustomer = await CustomerRegistrationFromTicketPurchase(newCreatedCustomer);// To insert customer in USER table
+                    if (responseOfInsertCustomer.StatusCode != 0) // Failed
+                        return new CommonApiResponseModel { StatusCode = 1, Message = ConstantValues.TXT_Ticket_Purchase_Customer_Registration_Failed };
+                    else // Success
+                    {
+                        userId = Convert.ToInt64(responseOfInsertCustomer.Data);
+                        return new CommonApiResponseModel { StatusCode = 0, Message = ConstantValues.TXT_Ticket_Purchase_Customer_Registration_Success, Data = userId };
+                    }
+                }
+                else
+                {
+                    long userIdFromData = await FindTheUserFromUsersData(requestModel.MobileNumber);
+                    if (userIdFromData != 0)
+                    {
+                        userId = userIdFromData;
+                        return new CommonApiResponseModel { StatusCode = 0, Message = ConstantValues.TXT_Ticket_Purchase_Customer_Search_Success, Data = userId };
+                    }
+                    else
+                        return new CommonApiResponseModel { StatusCode = 1, Message = ConstantValues.TXT_Ticket_Purchase_Customer_Search_Fail };
+                }
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+        }
+
+        //To convert the customer into CustomerRegistrationRequestModel so we can use common method to insert customers
+        private async Task<CustomerRegistrationRequestModel> CreateNewCustomerFromParaglidingRequestModel(ParaglidingTicketPurchaseRequestModel requestModel)
+        {
+            CustomerRegistrationRequestModel newCustomer = new()
+            {
+                FirstName = requestModel.FirstName,
+                LastName = requestModel.LastName,
+                Address = requestModel.Address,
+                MobileNumber = requestModel.MobileNumber,
+                AlternateMobileNumber = requestModel.AlternateMobileNumber,
+                Email = requestModel.Email,
+                CityId = requestModel.CityId,
+                StateId = requestModel.StateId,
+                PinCode = requestModel.PinCode,
                 IsDeleted = false,
                 InsertedBy = 1,
                 InsertedOn = DateTime.UtcNow,
             };
-            await _context.Users.AddAsync(newCustomer);
-            await _context.SaveChangesAsync();
-            return new CommonApiResponseModel { StatusCode = 0, Message = ConstantValues.SC_Msg_Ins, Data = newCustomer.UserId };
+            return newCustomer;
+        }
+
+        //Insert the customer into User table
+        public async Task<CommonApiResponseModel> CustomerRegistrationFromTicketPurchase(CustomerRegistrationRequestModel customerRegistrationModel)
+        {
+            try
+            {
+
+                User newCustomer = new()
+                {
+                    FirstName = customerRegistrationModel.FirstName,
+                    LastName = customerRegistrationModel.LastName,
+                    Address = customerRegistrationModel.Address,
+                    MobileNumber = customerRegistrationModel.MobileNumber,
+                    AlternateMobileNumber = customerRegistrationModel.AlternateMobileNumber,
+                    Email = customerRegistrationModel.Email,
+                    CityId = customerRegistrationModel.CityId,
+                    StateId = customerRegistrationModel.StateId,
+                    PinCode = customerRegistrationModel.PinCode,
+                    IsDeleted = false,
+                    InsertedBy = 1,
+                    InsertedOn = DateTime.UtcNow,
+                };
+                await _context.Users.AddAsync(newCustomer);
+                await _context.SaveChangesAsync();
+                return new CommonApiResponseModel { StatusCode = 0, Message = ConstantValues.SC_Msg_Ins, Data = newCustomer.UserId };
+
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+
         }
 
         //To insert the list of customer into user table
-        private async Task<CommonApiResponseModel> InsertListOfCustomers(ParaglidingTicketPurchaseRequestModel requestModel, long purchaseTicketId, decimal amountPerTicket)
+        private async Task<CommonApiResponseModel> InsertListOfCustomers(ParaglidingTicketPurchaseRequestModel requestModel, long purchaseTicketId)
         {
             if (requestModel.customerList != null)
             {
                 foreach (var eachCustomer in requestModel.customerList)
                 {
-                    bool isCustomerNew = CheckIfCustomerIsNew(eachCustomer.MobileNumber, eachCustomer.FirstName, eachCustomer.LastName).Result;
-                    bool isMobileNumberNew = CheckIfMobileNumberIsNew(eachCustomer.MobileNumber).Result;
-                    if (isCustomerNew)
+                    try
                     {
-                        if (!isMobileNumberNew)
-                            return new CommonApiResponseModel { StatusCode = 1, Message = ConstantValues.TXT_Ticket_Purchase_duplicate_number_validation };
-                        else
+
+
+                        bool isCustomerNew = CheckIfCustomerIsNew(eachCustomer.MobileNumber, eachCustomer.FirstName, eachCustomer.LastName);
+                        bool isMobileNumberNew = CheckIfMobileNumberIsNew(eachCustomer.MobileNumber);
+                        if (isCustomerNew)
                         {
-                            var responseFromCustomerRegister = CustomerRegistrationFromTicketPurchase(eachCustomer);
-                            if (responseFromCustomerRegister.Result.StatusCode != 0)
-                            {
-                                return new CommonApiResponseModel { StatusCode = 1, Message = ConstantValues.TXT_Ticket_Purchase_Error_Message };
-                            }
+                            if (!isMobileNumberNew)
+                                return new CommonApiResponseModel { StatusCode = 1, Message = ConstantValues.TXT_Ticket_Purchase_duplicate_number_validation };
                             else
                             {
-                                await InsertDataIntoParaglidingTicketPurchaseTable(requestModel, Convert.ToInt64(responseFromCustomerRegister.Result.Data));
-                                await InsertDataIntoParaglidingTicketPurchaseDetailTable(purchaseTicketId, Convert.ToInt64(responseFromCustomerRegister.Result.Data), amountPerTicket);
+                                var responseFromCustomerRegister = await CustomerRegistrationFromTicketPurchase(eachCustomer);
+                                if (responseFromCustomerRegister.StatusCode != 0)
+                                    return new CommonApiResponseModel { StatusCode = 1, Message = ConstantValues.TXT_Ticket_Purchase_Error_Message };
+                                else
+                                    await InsertDataIntoParaglidingTicketPurchaseDetailTable(purchaseTicketId, Convert.ToInt64(responseFromCustomerRegister.Data), requestModel.AmountPerTicket ?? 0);
+                            }
+                        }
+                        else
+                        {
+                            var oldCustomer = _context.Users.Where(x => x.FirstName == eachCustomer.FirstName && x.MobileNumber == eachCustomer.MobileNumber).FirstOrDefault();
+                            if (oldCustomer != null)
+                            {
+                                await InsertDataIntoParaglidingTicketPurchaseDetailTable(purchaseTicketId, oldCustomer.UserId, requestModel.AmountPerTicket ?? 0);
                             }
                         }
                     }
-                    else
+                    catch (Exception)
                     {
-                        var oldCustomer = _context.Users.Where(x => x.FirstName == eachCustomer.FirstName && x.LastName == eachCustomer.LastName && x.MobileNumber == eachCustomer.MobileNumber).FirstOrDefault();
-                        if (oldCustomer != null)
-                        {
-                            await InsertDataIntoParaglidingTicketPurchaseTable(requestModel, oldCustomer.UserId);
-                            await InsertDataIntoParaglidingTicketPurchaseDetailTable(purchaseTicketId, oldCustomer.UserId, amountPerTicket);
 
-                        }
+                        throw;
                     }
                 }
                 return new CommonApiResponseModel { StatusCode = 0, Message = ConstantValues.TXT_Ticket_Purchase_Success_Message };
@@ -163,52 +227,97 @@ namespace ThinkhpUserAPI.Repository.Service
                 return new CommonApiResponseModel { StatusCode = 0, Message = ConstantValues.TXT_Ticket_Purchase_Success_Message };
         }
 
+
+        //Insert data into ParaglidingTicketPurchase Table
         private async Task<CommonApiResponseModel> InsertDataIntoParaglidingTicketPurchaseTable(ParaglidingTicketPurchaseRequestModel requestModel, long? userId)
         {
-            ParaglidingTicketPurchase paraglidingTicketPurchase = new ParaglidingTicketPurchase()
+            try
             {
-                UserId = userId,
-                NoOfTicket = requestModel.NoOfTicket,
-                AmountPerTicket = requestModel.AmountPerTicket,
-                DiscountPercentage = requestModel.DiscountPercentage,
-                DiscountAmount = requestModel.DiscountAmount,
-                Cgstpercentage = requestModel.Cgstpercentage,
-                Cgstamount = requestModel.Cgstamount,
-                Sgstpercentage = requestModel.Sgstpercentage,
-                Sgstamount = requestModel.Sgstamount,
-                NetAmount = requestModel.NetAmount,
-            };
-            await _context.ParaglidingTicketPurchases.AddAsync(paraglidingTicketPurchase);
-            await _context.SaveChangesAsync();
+                ParaglidingTicketPurchase paraglidingTicketPurchase = new ParaglidingTicketPurchase()
+                {
+                    UserId = userId,
+                    NoOfTicket = requestModel.NoOfTicket,
+                    AmountPerTicket = requestModel.AmountPerTicket,
+                    DiscountPercentage = requestModel.DiscountPercentage,
+                    DiscountAmount = requestModel.DiscountAmount,
+                    Cgstpercentage = requestModel.Cgstpercentage,
+                    Cgstamount = requestModel.Cgstamount,
+                    Sgstpercentage = requestModel.Sgstpercentage,
+                    Sgstamount = requestModel.Sgstamount,
+                    NetAmount = requestModel.NetAmount,
+                };
+                await _context.ParaglidingTicketPurchases.AddAsync(paraglidingTicketPurchase);
+                await _context.SaveChangesAsync();
 
-            return new CommonApiResponseModel { StatusCode = 0, Message = ConstantValues.TXT_Ticket_Purchase_Success_Message, Data = paraglidingTicketPurchase.PurchasedTicketId };
+                return new CommonApiResponseModel { StatusCode = 0, Message = ConstantValues.TXT_Ticket_Purchase_Success_Message, Data = paraglidingTicketPurchase.PurchasedTicketId };
+
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
         }
 
+        //Insert data into ParaglidingTicketPurchaseDetail Table
         private async Task<CommonApiResponseModel> InsertDataIntoParaglidingTicketPurchaseDetailTable(long PurchasedTicketId, long UserId, decimal AmountPerTicket)
         {
-            ParaglidingTicketPurchaseDetail paraglidingTicketPurchaseDetail = new ParaglidingTicketPurchaseDetail()
+            try
             {
-                PurchasedTicketId = PurchasedTicketId,
-                UserId = UserId,
-                NetAmount = AmountPerTicket
-            };
-            await _context.ParaglidingTicketPurchaseDetails.AddAsync(paraglidingTicketPurchaseDetail);
-            await _context.SaveChangesAsync();
-            await InsertDataIntoParaglidingTicketStatusTable(paraglidingTicketPurchaseDetail.PurchasedTicketDetailId);
-            return new CommonApiResponseModel { StatusCode = 0, Message = ConstantValues.TXT_Ticket_Purchase_Success_Message };
+
+
+                ParaglidingTicketPurchaseDetail paraglidingTicketPurchaseDetail = new ParaglidingTicketPurchaseDetail()
+                {
+                    PurchasedTicketId = PurchasedTicketId,
+                    UserId = UserId,
+                    NetAmount = AmountPerTicket
+                };
+                await _context.ParaglidingTicketPurchaseDetails.AddAsync(paraglidingTicketPurchaseDetail);
+                await _context.SaveChangesAsync();
+                await InsertDataIntoParaglidingTicketStatusTable(paraglidingTicketPurchaseDetail.PurchasedTicketDetailId);
+                return new CommonApiResponseModel { StatusCode = 0, Message = ConstantValues.TXT_Ticket_Purchase_Success_Message };
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
         }
+
+        //Insert data into ParaglidingTicketStatus Table
         private async Task<CommonApiResponseModel> InsertDataIntoParaglidingTicketStatusTable(long PurchasedTicketDetailId)
         {
-            ParaglidingTicketStatus paraglidingTicketStatuses = new ParaglidingTicketStatus()
+            try
             {
-                PurchasedTicketDetailId = PurchasedTicketDetailId,
-                IsTicketPurchased = true,
-            };
-            await _context.ParaglidingTicketStatuses.AddAsync(paraglidingTicketStatuses);
-            await _context.SaveChangesAsync();
+                ParaglidingTicketStatus paraglidingTicketStatuses = new ParaglidingTicketStatus()
+                {
+                    PurchasedTicketDetailId = PurchasedTicketDetailId,
+                    IsTicketPurchased = true,
+                    IsTicketPrinted = false,
+                    IsTicketScanned = false,
+                };
+                await _context.ParaglidingTicketStatuses.AddAsync(paraglidingTicketStatuses);
+                await _context.SaveChangesAsync();
 
-            return new CommonApiResponseModel { StatusCode = 0, Message = ConstantValues.TXT_Ticket_Purchase_Success_Message };
+                return new CommonApiResponseModel { StatusCode = 0, Message = ConstantValues.TXT_Ticket_Purchase_Success_Message };
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
         }
+
+        //Find & get the User from existing users data
+        private async Task<long> FindTheUserFromUsersData(string MobileNumber)
+        {
+            var user = _context.Users.Where(x => x.UserName == MobileNumber).FirstOrDefault();
+            if (user != null)
+                return user.UserId;
+            else
+                return 0;
+        }
+
         #endregion
     }
 }
