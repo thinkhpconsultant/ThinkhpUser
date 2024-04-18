@@ -34,7 +34,10 @@ namespace ThinkhpUserAPI.Models.Helper
         public const string TXT_Ticket_Purchase_duplicate_number_validation = "Mobile number already in use, Please enter new mobile number!";
         public const string TXT_Ticket_Purchase_Success_Message = "Ticket purchased successfully.";
         public const string TXT_Ticket_Purchase_Error_Message = "Ticket purchase failed.";
-
+        public const string TXT_Ticket_Purchase_Customer_Registration_Success = "Customer registration completed successfully.";
+        public const string TXT_Ticket_Purchase_Customer_Registration_Failed = "Customer registration failed.";
+        public const string TXT_Ticket_Purchase_Customer_Search_Success = "Customer Found.";
+        public const string TXT_Ticket_Purchase_Customer_Search_Fail = "There was an error searching for entered user.";
 
         #endregion
     }
