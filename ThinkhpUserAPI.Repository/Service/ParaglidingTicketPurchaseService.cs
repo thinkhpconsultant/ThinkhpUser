@@ -30,7 +30,10 @@ namespace ThinkhpUserAPI.Repository.Service
                 var customerSearchOfRegistration = await InsertOrFindTheUserAndReturnIdOfUser(requestModel);
                 if (customerSearchOfRegistration != null)
                 {
-                    if (customerSearchOfRegistration.StatusCode == 0)
+                    if (customerSearchOfRegistration.StatusCode != 0)
+                        return new CommonApiResponseModel { StatusCode = 1, Message = customerSearchOfRegistration.Message };
+
+                    else
                         userId = Convert.ToInt64(customerSearchOfRegistration.Data);
                 }
                 var insertInPurchaseTicketTable = await InsertDataIntoParaglidingTicketPurchaseTable(requestModel, userId);
@@ -290,6 +293,8 @@ namespace ThinkhpUserAPI.Repository.Service
                 {
                     PurchasedTicketDetailId = PurchasedTicketDetailId,
                     IsTicketPurchased = true,
+                    IsTicketPrinted = false,
+                    IsTicketScanned = false,
                 };
                 await _context.ParaglidingTicketStatuses.AddAsync(paraglidingTicketStatuses);
                 await _context.SaveChangesAsync();
